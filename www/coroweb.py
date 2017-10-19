@@ -1,7 +1,7 @@
 import functools, logging, inspect, asyncio, os
 from aiohttp import web
 from urllib import parse
-#from apis import APIError
+from apis import APIError
 logging.basicConfig(level=logging.INFO)
 
 
@@ -105,7 +105,7 @@ class RequestHandler(object):
 				if request.content_type == None: # 如果content_type不存在，返回400错误
 					return web.HTTPBadRequest(text='Missing Content_Type.')
 				ct = request.content_type.lower() # 小写，便于检查
-				if ct.startwith('application/json'):  # json格式数据
+				if ct.startswith('application/json'):  # json格式数据
 					params = await request.json() # 仅解析body字段的json数据
 					if not isinstance(params, dict): # request.json()返回dict对象
 						return web.HTTPBadRequest(text='JSON body must be object.')
@@ -137,7 +137,7 @@ class RequestHandler(object):
 			if self._has_named_kw_arg and (not self._has_var_kw_arg): # 若视图函数只有命名关键词参数且没有关键词参数				
 				copy = dict()
 				# 只保留命名关键词参数
-				for name in self._named_kw_arg:
+				for name in self._named_kw_args:
 					if name in kw:
 						copy[name] = kw[name]
 				kw = copy # kw中只存在命名关键词参数
@@ -156,11 +156,11 @@ class RequestHandler(object):
 		# 至此，kw为视图函数fn真正能调用的参数
 		# request请求中的参数，终于传递给了视图函数
 		logging.info('call with args: %s' % str(kw))
-		#try:
-		r = await self._func(**kw)
-		return r
-		#except APIerror as e:
-			#return dict(error=e.error, data=e.data, message=e.message)
+		try:
+			r = await self._func(**kw)
+			return r
+		except APIError as e:
+			return dict(error=e.error, data=e.data, message=e.message)
 
 # 编写一个add_route函数，用来注册一个视图函数
 def add_route(app, fn):

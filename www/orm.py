@@ -144,8 +144,8 @@ class Model(dict, metaclass = ModelMetaclass):
 	# 有子类继承时，调用该类方法时，传入的类变量cls是子类，而非父类。 
 	@classmethod
 	async def findAll(cls, where=None, args=[], **kw):
-		sql = [cls.__select__]
-		if where:
+		sql = [cls.__select__] 
+		if where: 
 			sql.append('where')
 			sql.append(where)
 		orderBy = kw.get('orderby', None)
@@ -170,10 +170,10 @@ class Model(dict, metaclass = ModelMetaclass):
 
 	@classmethod
 	async def find(cls, primarykey):
-		sql = [cls.__select__]
-		sql.append('%s where %s=?' % (cls.__table__, cls.__primary_key__))
+		sql = [cls.__select__] # 'select `%s`, %s from `%s`' % (primarykey, ','.join(escaped_fields), tableName)
+		sql.append('where `%s`=?' % cls.__primary_key__)
 		rs = await select(' '.join(sql), args=[primarykey], size=1)
-		return [cls(**rs[0])]
+		return cls(**rs[0])
 
 	@classmethod
 	async def findnumber():

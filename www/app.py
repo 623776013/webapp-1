@@ -5,6 +5,7 @@ from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 from coroweb import add_route, add_routes, add_static
+from handler import cookie2user, COOKIE_NAME
 
 logging.basicConfig(level = logging.INFO)
 
@@ -121,6 +122,20 @@ async def response_factory(app, handler):
 		return resp
 	return response
 
+async def auth_factory(app, handler):
+	async def auth(request):
+		logging.info('check user: %s %s' % (request.method, request.path))
+		request.__user__ = None
+		# request的cookies属性中保存所有cookie值
+		cookie_str = request.cookies.get(COOKIE_NAME, None) 
+		if cookie_str:
+			user = await cookie2user(cookie_str)
+			if user:
+				logging.info('set current user: %s' % user.email)
+				# 将user绑定到request参数上，供后续视图函数获取
+				request.__user__ = user
+		return await handler(request)
+	return auth
 
 
 
@@ -128,7 +143,7 @@ if __name__ == '__main__':
 
 	async def init(loop):
 		await orm.create_pool(loop, **configs['db']) # 添加配置文件
-		app = web.Application(loop = loop, middlewares=[logger_factory, response_factory])
+		app = web.Application(loop = loop, middlewares=[logger_factory, auth_factory, response_factory])
 		init_jinja2(app, filters=dict(datetime = datetime_filter))
 		add_routes(app, 'handler')
 		add_static(app)
