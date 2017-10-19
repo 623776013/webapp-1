@@ -1,8 +1,11 @@
 import asyncio, os, json, time, logging
+import orm
+from config import configs
 from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 from coroweb import add_route, add_routes, add_static
+
 logging.basicConfig(level = logging.INFO)
 
 # 初始化jinjia2模板环境
@@ -124,9 +127,10 @@ async def response_factory(app, handler):
 if __name__ == '__main__':
 
 	async def init(loop):
+		await orm.create_pool(loop, **configs['db']) # 添加配置文件
 		app = web.Application(loop = loop, middlewares=[logger_factory, response_factory])
 		init_jinja2(app, filters=dict(datetime = datetime_filter))
-		add_routes(app, 'test_view')
+		add_routes(app, 'handler')
 		add_static(app)
 		srv = await loop.create_server(app.make_handler(), 'localhost', 9000)
 		logging.info('server started at http://127.0.0.1:9000...')
