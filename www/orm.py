@@ -37,7 +37,7 @@ async def select(sql, args, size=None):
 				rs = await cur.fetchmany(size)
 			else:
 				rs = await cur.fetchall()
-	logging.info('rows reuturned: %s' % len(rs))
+	logging.info('rows returned: %s' % len(rs))
 	return rs
 
 # 封装insert，update，delete
@@ -143,12 +143,14 @@ class Model(dict, metaclass = ModelMetaclass):
 	# 类方法有类变量cls传入，从而可以用cls做一些相关的处理。
 	# 有子类继承时，调用该类方法时，传入的类变量cls是子类，而非父类。 
 	@classmethod
-	async def findAll(cls, where=None, args=[], **kw):
+	async def findAll(cls, where=None, args=None, **kw):
+		if not args:
+			args = []
 		sql = [cls.__select__] 
 		if where: 
 			sql.append('where')
 			sql.append(where)
-		orderBy = kw.get('orderby', None)
+		orderBy = kw.get('orderBy', None)
 		if orderBy:
 			sql.append('order by')
 			sql.append(orderBy)
@@ -163,21 +165,31 @@ class Model(dict, metaclass = ModelMetaclass):
 				args.extend(limit)
 			else:
 				raise('Invalid limit value: %s' % str(limit))
-		rs = await select(' '.join(sql), args)
+		rs = await select(' '.join(sql), args)	
 		# 将返回的结果迭代生成类的实例，返回的都是实例对象, 而非仅仅是数据
 		return [cls(**r) for r in rs] 
 
-
 	@classmethod
-	async def find(cls, primarykey):
-		sql = [cls.__select__] # 'select `%s`, %s from `%s`' % (primarykey, ','.join(escaped_fields), tableName)
-		sql.append('where `%s`=?' % cls.__primary_key__)
-		rs = await select(' '.join(sql), args=[primarykey], size=1)
+	async def find(cls,primarykey):#根据主键查找数据库
+		sql = '%s where `%s`=?' % (cls.__select__, cls.__primary_key__)
+		rs = await select(sql, [primarykey], 1)
+		if len(rs) == 0:
+			return None
 		return cls(**rs[0])
 
 	@classmethod
-	async def findnumber():
-		pass
+	async def findNumber(cls, selectField, where=None, args=None):
+		# 使用了SQL的聚集函数 count()
+		# select %s as __num__ from table ==> __num__表示列的别名，筛选结果列名会变成__num__
+		sql = ['select %s __num__ from `%s`' % (selectField, cls.__table__)]
+		if where:
+			sql.append('where')
+			sql.append(where)
+		rs = await select(' '.join(sql), args, 1)
+		if len(rs) == 0:
+			return None
+		# fetchmany()返回列表结果，用索引取出。又因为Dictcursor，值用key取出。
+		return rs[0]['__num__']
 
 	async def save(self):
 		args = list(map(self.getValueOrDefault, self.__fields__))
@@ -195,7 +207,7 @@ class Model(dict, metaclass = ModelMetaclass):
 		if rows != 1:
 			logging.warn('failed to update record: affected rows: %s' % rows)
 
-	async def delete(self):
+	async def remove(self):
 		args = [self.getValue(self.__primary_key__)]
 		rows = await execute(self.__delete__, args)
 		if rows != 1:

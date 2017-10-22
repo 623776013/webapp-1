@@ -3,7 +3,6 @@
 {% block title %}日志{% endblock %}
 
 {% block content %}
-
     <div class="uk-width-medium-3-4">
         {% for blog in blogs %}
             <article class="uk-article">
@@ -14,6 +13,7 @@
             </article>
             <hr class="uk-article-divider">
         {% endfor %}
+    {{ pagination('/?page=', page) }}
     </div>
 
     <div class="uk-width-medium-1-4">
@@ -27,5 +27,4 @@
             </ul>
         </div>
     </div>
-
 {% endblock %}
